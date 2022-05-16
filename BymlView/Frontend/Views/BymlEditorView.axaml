@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="clr-namespace:BymlView.Frontend.Models"
+             xmlns:viewModels="clr-namespace:BymlView.Frontend.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="BymlView.Frontend.Views.BymlEditorView"
+             x:DataType="viewModels:BymlEditorViewModel">
+	<Grid ShowGridLines="True">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="3*"></RowDefinition>
+			<RowDefinition Height="1*"></RowDefinition>
+		</Grid.RowDefinitions>
+
+		<TreeView
+			Name="BymlTreeView"
+			Items="{CompiledBinding Items}"
+			Grid.Row="0"
+			SelectedItem="{CompiledBinding SelectedItem}"
+		>
+			<!-- Setup context menu as a resource. -->
+			<TreeView.Resources>
+                <!-- Context menu is only enabled for root notes. -->
+				<ContextMenu
+					x:DataType="models:BymlNodeAdapter"
+                    x:Key="ContextMenu"
+                >
+					<MenuItem Header="Close" Click="OnClose" 
+                              IsVisible="{CompiledBinding Root}"
+                    />
+					<MenuItem Header="Edit Value" Click="OnEditValue">
+						<MenuItem.IsVisible>
+							<MultiBinding Converter="{x:Static BoolConverters.And}">
+								<Binding Path="!Root"/>
+                                <Binding Path="IsValueNode"/>
+                            </MultiBinding>
+                        </MenuItem.IsVisible>
+                    </MenuItem>
+                    <MenuItem Header="Edit Name" Click="OnEditName"
+                              IsVisible="{CompiledBinding !Root}"
+                    />
+				</ContextMenu>
+			</TreeView.Resources>
+
+			<!-- Style to set the context menu for each tree view item. -->
+			<TreeView.Styles>
+				<Style Selector="TreeViewItem">
+					<Setter Property="ContextMenu" Value="{StaticResource ContextMenu}"/>
+				</Style>
+			</TreeView.Styles>
+
+			<!-- Item template just displays the node name. -->
+			<TreeView.ItemTemplate>
+				<TreeDataTemplate x:DataType="models:BymlNodeAdapter"
+                    ItemsSource="{Binding  Children}"
+                >
+					<DockPanel>
+                        <TextBlock Text="{CompiledBinding  DisplayName}" DockPanel.Dock="Left"/>
+
+						<!--
+						<StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+					    </StackPanel>
+						<TextBox Text="{CompiledBinding  Value}" MaxWidth="50" DockPanel.Dock="Right"/>
+						-->
+
+					</DockPanel>
+				</TreeDataTemplate>
+			</TreeView.ItemTemplate>
+		</TreeView>
+
+		<TextBlock
+			Grid.Row="1"
+			Margin="10,10,10,10"
+			Text="{CompiledBinding SelectedItem.Value, FallbackValue=''}"
+		>
+			<TextBlock.ContextMenu>
+				<ContextMenu IsEnabled="{Binding Root}">
+					<MenuItem Header="Copy" Click="OnCopy"/>
+				</ContextMenu>
+			</TextBlock.ContextMenu>
+		</TextBlock>
+	</Grid>
+</UserControl>

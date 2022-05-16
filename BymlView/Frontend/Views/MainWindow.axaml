@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="using:BymlView.Frontend.Views"
+        xmlns:vm="using:BymlView.Frontend.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+		xmlns:dialogHost="clr-namespace:DialogHost;assembly=DialogHost.Avalonia"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="BymlView.Frontend.Views.MainWindow"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="BymlView"
+		DragDrop.AllowDrop="True"
+		Activated="OnActivated"
+	>
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+	<!-- Wrap all content in the dialog host so it goes over everything. -->
+	<dialogHost:DialogHost Name="DH" CloseOnClickAway="True" Identifier="Main">
+		<ContentPresenter>
+			<ContentPresenter.Content>
+			<TabControl Name="MainTabControl" SelectedIndex="{Binding SelectedIndex}">
+				<!-- Byml Editor tab. -->
+				<TabItem Content="{Binding BymlEditor}">
+					<TabItem.Header>
+						<TextBlock VerticalAlignment="Center">Byml Editor</TextBlock>
+					</TabItem.Header>
+				</TabItem>
+				<!-- Blitz Explorer tab. -->
+				
+				<!--
+				<TabItem>
+					<TabItem.Header>
+						<TextBlock VerticalAlignment="Center">Blitz Explorer</TextBlock>
+					</TabItem.Header>
+					<Label>test</Label>
+				</TabItem>
+				-->
+			</TabControl>
+			</ContentPresenter.Content>
+		</ContentPresenter>
+	</dialogHost:DialogHost>
+
+</Window>
