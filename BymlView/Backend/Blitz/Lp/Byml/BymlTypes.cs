@@ -10,6 +10,7 @@ namespace LibBlitz.Lp.Byml
         Array = 0xC0,
         Hash = 0xC1,
         StringTable = 0xC2,
+        PathArray = 0xC3,   /* Obscure, only observed in MK8DX. */
         Bool = 0xD0,
         Int = 0xD1,
         Float = 0xD2,
@@ -27,7 +28,22 @@ namespace LibBlitz.Lp.Byml
         public ushort Version;
         public uint HashKeyOffset;
         public uint StringTableOffset;
-        public uint RootOffset;
+        public uint RootOrPathArrayOffset;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Size = 0xC)]
+    public struct Vector3
+    {
+        public float X, Y, Z;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Size = 0x1C)]
+
+    public struct BymlPathPoint
+    {
+        public Vector3 Position;
+        public Vector3 Normal;
+        public uint Unk;
     }
 
     public struct BymlHashPair : IComparable<string>, IComparable<BymlHashPair>

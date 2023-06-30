@@ -4,6 +4,7 @@ using LibHac.Tools.FsSystem;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using BymlView.Backend.Blitz.Lp.Byml;
 
 namespace LibBlitz.Lp.Byml
 {
@@ -28,12 +29,23 @@ namespace LibBlitz.Lp.Byml
             };
         }
 
+        public static bool IsValidRootNode(BymlNodeId? id)
+        {
+            return id is BymlNodeId.Array or BymlNodeId.Hash;
+        }
+
+        public static bool IsValidPathArrayNode(byte id)
+        {
+            return id == 0 || (BymlNodeId)id == BymlNodeId.PathArray;
+        }
+
         private readonly IStorage Storage;
 
         private readonly BymlStringTable? HashKeyTable;
         private readonly BymlStringTable? StringTable;
 
         public IBymlNode Root;
+        public IBymlNode? PathArray;
 
         private BymlHeader Header;
         public Byml(IStorage storage)
@@ -47,28 +59,68 @@ namespace LibBlitz.Lp.Byml
             if (Header.Magic != 0x4259)
                 throw new Exception("Invalid BYML header! (Big endian is not supported)");
 
-            /* Try to get the hash key table. */
-            using (stream.TemporarySeek(Header.HashKeyOffset, SeekOrigin.Begin))
+            /* Try to infer if there's another node offset that is actually the root node. */
+            var possibleRootNodeOffset = stream.AsBinaryReader().ReadUInt32();
+            var shiftedRootNodeProbable = false;
+            if (0 < possibleRootNodeOffset && possibleRootNodeOffset < stream.Length - 1)
             {
-                if (ReadNodeId(stream) == HashKeyTableId)
-                    HashKeyTable = (BymlStringTable)ParseNode(stream, HashKeyTableId);
+                using (stream.TemporarySeek(possibleRootNodeOffset, SeekOrigin.Begin))
+                {
+                    shiftedRootNodeProbable = IsValidRootNode(ReadNodeId(stream));
+                }
             }
+
+            /* Try to get the hash key table. */
+            if(Header.HashKeyOffset != 0)
+                using (stream.TemporarySeek(Header.HashKeyOffset, SeekOrigin.Begin))
+                {
+                    if (ReadNodeId(stream) == HashKeyTableId)
+                        HashKeyTable = (BymlStringTable)ParseNode(stream, HashKeyTableId);
+                }
 
             /* Try to get the string table. */
-            using (stream.TemporarySeek(Header.StringTableOffset, SeekOrigin.Begin))
+            if(Header.StringTableOffset != 0)
+                using (stream.TemporarySeek(Header.StringTableOffset, SeekOrigin.Begin))
+                {
+                    if (ReadNodeId(stream) == StringTableId)
+                        StringTable = (BymlStringTable)ParseNode(stream, StringTableId);
+                }
+
+            void ParseRootNode(uint offset)
             {
-                if (ReadNodeId(stream) == StringTableId)
-                    StringTable = (BymlStringTable)ParseNode(stream, StringTableId);
+                using (stream.TemporarySeek(offset, SeekOrigin.Begin))
+                {
+                    var id = ReadNodeId(stream);
+                    if (!IsValidRootNode(id))
+                        throw new InvalidDataException("Root node must be array or hash!");
+                    Root = ParseNode(stream, id.Value);
+                }
             }
 
-            /* Start parsing the root node. */
-            using (stream.TemporarySeek(Header.RootOffset, SeekOrigin.Begin))
+            if (shiftedRootNodeProbable)
             {
-                var id = ReadNodeId(stream);
-                if (id != BymlNodeId.Array && id != BymlNodeId.Hash)
-                    throw new InvalidDataException("Root node must be array or hash!");
-
-                Root = ParseNode(stream, id.Value);
+                /* Let's really see if this is PathArray... */
+                using (stream.TemporarySeek(Header.RootOrPathArrayOffset, SeekOrigin.Begin))
+                {
+                    var id = (byte)stream.ReadByte();
+                    /* See if this is really a PathArray... */
+                    if (IsValidPathArrayNode(id))
+                    {
+                        /* There is a PathArray, so use the other offset for root. */
+                        PathArray = new BymlPathArrayNode(stream.AsBinaryReader());
+                        ParseRootNode(possibleRootNodeOffset);
+                    }
+                    else
+                    {
+                        /* This is just the root node. */
+                        ParseRootNode(Header.RootOrPathArrayOffset);
+                    }
+                }
+            }
+            else
+            {
+                /* This is just the root node. */
+                ParseRootNode(Header.RootOrPathArrayOffset);
             }
         }
 
@@ -152,14 +204,15 @@ namespace LibBlitz.Lp.Byml
                 BymlNodeId.Array => new BymlArrayNode(this, stream),
                 BymlNodeId.Hash => new BymlHashTable(this, stream),
                 BymlNodeId.StringTable => new BymlStringTable(stream),
+                BymlNodeId.PathArray => new BymlPathArrayNode(reader),
                 BymlNodeId.Bool => new BymlNode<bool>(id, (reader.ReadUInt32() & 1) == 1),
                 BymlNodeId.Int => new BymlNode<int>(id, reader.ReadInt32()),
                 BymlNodeId.Float => new BymlNode<float>(id, reader.ReadSingle()),
                 BymlNodeId.UInt => new BymlNode<uint>(id, reader.ReadUInt32()),
                 BymlNodeId.Null => new BymlNode<uint>(id, reader.ReadUInt32()),
-                BymlNodeId.Int64 => throw new NotImplementedException(),
-                BymlNodeId.UInt64 => throw new NotImplementedException(),
-                BymlNodeId.Double => throw new NotImplementedException(),
+                BymlNodeId.Int64 => new BymlBigDataNode<long>(id, reader,       r => r.ReadInt64()), 
+                BymlNodeId.UInt64 => new BymlBigDataNode<ulong>(id, reader,     r => r.ReadUInt64()), 
+                BymlNodeId.Double => new BymlBigDataNode<double>(id, reader,    r => r.ReadDouble()), 
                 _ => throw new NotImplementedException(),
             };
 

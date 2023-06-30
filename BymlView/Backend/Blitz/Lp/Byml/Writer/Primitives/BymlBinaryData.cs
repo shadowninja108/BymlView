@@ -12,7 +12,7 @@ namespace LibBlitz.Lp.Byml.Writer.Primitives
             Data = data;
         }
 
-        /* + 4 to accomdate storing the length. */
+        /* + 4 to accommodate storing the length. */
         public override int CalcBigDataSize() => Data.Length + 4;
         public override BymlNodeId GetTypeCode() => BymlNodeId.Bin;
 

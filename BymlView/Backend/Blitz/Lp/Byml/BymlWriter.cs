@@ -1,5 +1,4 @@
 ﻿using BymlView.Backend;
-using BymlView.Common;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -335,7 +334,7 @@ namespace LibBlitz.Lp.Byml
                 Version = 4,
                 HashKeyOffset = HashKeyStringTable.IsEmpty() ? 0 : hashKeyOffset,
                 StringTableOffset = StringTable.IsEmpty() ? 0 : stringTableOffset,
-                RootOffset = ContainerList.Count == 0 ? 0 : rootOffset
+                RootOrPathArrayOffset = ContainerList.Count == 0 ? 0 : rootOffset
             };
 
             stream.Write(BackendUtils.AsSpan(ref header));

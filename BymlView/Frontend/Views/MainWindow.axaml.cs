@@ -1,19 +1,13 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
-using Avalonia.Threading;
 using BymlView.Backend;
-using BymlView.Frontend.Models;
 using BymlView.Frontend.ViewModels;
-using BymlView.Frontend.Views.Dialogs;
 using ReactiveUI;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace BymlView.Frontend.Views
 {

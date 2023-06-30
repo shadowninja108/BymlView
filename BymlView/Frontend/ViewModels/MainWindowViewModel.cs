@@ -1,8 +1,3 @@
-using System.Reactive.Disposables;
-using Avalonia;
-using Avalonia.Controls;
-using ReactiveUI;
-
 namespace BymlView.Frontend.ViewModels
 {
     public class MainWindowViewModel : ViewModelBase
