@@ -48,6 +48,11 @@ namespace BymlView.Backend
             return data;
         }
 
+        public static void WriteArray<T>(this Stream stream, ReadOnlySpan<T> array) where T : struct
+        {
+            stream.Write(MemoryMarshal.Cast<T, byte>(array));
+        }
+
         public static TemporarySeekHandle TemporarySeek(this Stream stream)
         {
             return stream.TemporarySeek(0, SeekOrigin.Begin);

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using BymlView.Backend.Blitz.Lp.Byml.Writer;
 
 namespace LibBlitz.Lp.Byml
 {
@@ -13,6 +14,9 @@ namespace LibBlitz.Lp.Byml
         private readonly List<Writer.BymlContainer> ContainerList = new();
         private readonly Writer.BymlBigDataList BigDataList = new();
         private int CurrentContainerIndex = -1;
+
+        /* MK8DX oddity. */
+        public BymlPathArray? PathArray = null;
 
         private Writer.BymlContainer GetCurrentContainer() => ContainerList[CurrentContainerIndex];
 
@@ -301,7 +305,7 @@ namespace LibBlitz.Lp.Byml
             PushLocalIter(node, key);
         }
 
-        public uint CalcHeaderSize() => (uint)Unsafe.SizeOf<BymlHeader>();
+        public uint CalcHeaderSize() => (uint)(Unsafe.SizeOf<BymlHeader>() + (PathArray != null ? Unsafe.SizeOf<uint>() : 0));
 
         public uint CalcPackSize()
         {
@@ -309,6 +313,7 @@ namespace LibBlitz.Lp.Byml
             size += (uint)HashKeyStringTable.CalcPackSize();
             size += (uint)StringTable.CalcPackSize();
             size += (uint)BigDataList.CalcPackSize();
+            size += (uint)(PathArray?.CalcPackSize() ?? 0);
             foreach (var container in ContainerList)
             {
                 size += (uint)container.CalcPackSize();
@@ -321,12 +326,16 @@ namespace LibBlitz.Lp.Byml
             uint headerSize = CalcHeaderSize();
             uint hashKeyStringTableSize = (uint)HashKeyStringTable.CalcPackSize();
             uint stringTableSize = (uint)StringTable.CalcPackSize();
+            uint bigDataListSize = (uint)BigDataList.CalcPackSize();
 
             uint hashKeyOffset = headerSize;
             uint stringTableOffset = headerSize + hashKeyStringTableSize;
             uint bigDataListOffset = stringTableOffset + stringTableSize;
+            uint pathArrayOffset = bigDataListOffset + bigDataListSize;
 
-            uint rootOffset = (uint)BigDataList.SetOffset((int)bigDataListOffset);
+            var rootOffset = (uint)BigDataList.SetOffset((int)bigDataListOffset);
+            rootOffset = ContainerList.Count == 0 ? 0 : rootOffset;
+            var rootOrPathArrayOffset = PathArray != null ? pathArrayOffset : rootOffset;
 
             BymlHeader header = new()
             {
@@ -334,13 +343,19 @@ namespace LibBlitz.Lp.Byml
                 Version = 4,
                 HashKeyOffset = HashKeyStringTable.IsEmpty() ? 0 : hashKeyOffset,
                 StringTableOffset = StringTable.IsEmpty() ? 0 : stringTableOffset,
-                RootOrPathArrayOffset = ContainerList.Count == 0 ? 0 : rootOffset
+                RootOrPathArrayOffset = rootOrPathArrayOffset
             };
+
+            if (PathArray != null)
+            {
+                stream.AsBinaryWriter().Write(rootOffset);
+            }
 
             stream.Write(BackendUtils.AsSpan(ref header));
             HashKeyStringTable.Write(stream);
             StringTable.Write(stream);
             BigDataList.Write(stream);
+            PathArray?.Write(stream);
 
             uint offset = rootOffset;
             foreach (var container in ContainerList)
